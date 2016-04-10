@@ -282,8 +282,7 @@ public:
                         point.pt.y = (float)ix;
                         point.response = fabs(value);
                         point.size = evolution[i].esigma;
-                        point.octave = (int)evolution[i].octave;
-                        point.class_id = i;
+                        point.octave = i;
 
                         // We use the angle field for the sublevel value
                         // Then, we will replace this angle field with the main orientation
@@ -344,7 +343,7 @@ void KAZEFeatures::Determinant_Hessian(std::vector<KeyPoint>& kpts)
 
             // Check in case we have the same point as maxima in previous evolution levels
             for (int ik = 0; ik < (int)kpts.size(); ik++) {
-                if (kpts[ik].class_id == level || kpts[ik].class_id == level + 1 || kpts[ik].class_id == level - 1) {
+                if (kpts[ik].octave == level || kpts[ik].octave == level + 1 || kpts[ik].octave == level - 1) {
                     dist = pow(kpts_par_[i][j].pt.x - kpts[ik].pt.x, 2) + pow(kpts_par_[i][j].pt.y - kpts[ik].pt.y, 2);
 
                     if (dist < evolution_[level].sigma_size*evolution_[level].sigma_size) {
@@ -397,7 +396,7 @@ void KAZEFeatures::Determinant_Hessian(std::vector<KeyPoint>& kpts)
 void KAZEFeatures::Do_Subpixel_Refinement(std::vector<KeyPoint> &kpts) {
 
     int step = 1;
-    int x = 0, y = 0;
+    int x = 0, y = 0, level = 0;
     float Dx = 0.0, Dy = 0.0, Ds = 0.0, dsc = 0.0;
     float Dxx = 0.0, Dyy = 0.0, Dss = 0.0, Dxy = 0.0, Dxs = 0.0, Dys = 0.0;
     Mat A = Mat::zeros(3, 3, CV_32F);
@@ -410,42 +409,43 @@ void KAZEFeatures::Do_Subpixel_Refinement(std::vector<KeyPoint> &kpts) {
 
         x = static_cast<int>(kpts_[i].pt.x);
         y = static_cast<int>(kpts_[i].pt.y);
+        level = static_cast<int>(kpts_[i].octave);
 
         // Compute the gradient
-        Dx = (1.0f / (2.0f*step)) * (evolution_[kpts_[i].class_id].Ldet.at<float>(y, x + step)
-            - evolution_[kpts_[i].class_id].Ldet.at<float>(y, x - step));
-        Dy = (1.0f / (2.0f*step)) * (evolution_[kpts_[i].class_id].Ldet.at<float>(y + step, x)
-            - evolution_[kpts_[i].class_id].Ldet.at<float>(y - step, x));
-        Ds = 0.5f * (evolution_[kpts_[i].class_id + 1].Ldet.at<float>(y, x)
-            - evolution_[kpts_[i].class_id - 1].Ldet.at<float>(y, x));
+        Dx = (1.0f / (2.0f*step)) * (evolution_[level].Ldet.at<float>(y, x + step)
+            - evolution_[level].Ldet.at<float>(y, x - step));
+        Dy = (1.0f / (2.0f*step)) * (evolution_[level].Ldet.at<float>(y + step, x)
+            - evolution_[level].Ldet.at<float>(y - step, x));
+        Ds = 0.5f * (evolution_[level + 1].Ldet.at<float>(y, x)
+            - evolution_[level - 1].Ldet.at<float>(y, x));
 
         // Compute the Hessian
-        Dxx = (1.0f / (step*step)) * (evolution_[kpts_[i].class_id].Ldet.at<float>(y, x + step)
-            + evolution_[kpts_[i].class_id].Ldet.at<float>(y, x - step)
-            - 2.0f*evolution_[kpts_[i].class_id].Ldet.at<float>(y,x));
+        Dxx = (1.0f / (step*step)) * (evolution_[level].Ldet.at<float>(y, x + step)
+            + evolution_[level].Ldet.at<float>(y, x - step)
+            - 2.0f*evolution_[level].Ldet.at<float>(y,x));
 
-        Dyy = (1.0f / (step*step)) * (evolution_[kpts_[i].class_id].Ldet.at<float>(y + step, x)
-            + evolution_[kpts_[i].class_id].Ldet.at<float>(y - step, x)
-            - 2.0f*evolution_[kpts_[i].class_id].Ldet.at<float>(y, x));
+        Dyy = (1.0f / (step*step)) * (evolution_[level].Ldet.at<float>(y + step, x)
+            + evolution_[level].Ldet.at<float>(y - step, x)
+            - 2.0f*evolution_[level].Ldet.at<float>(y, x));
 
-        Dss = evolution_[kpts_[i].class_id + 1].Ldet.at<float>(y, x)
-            + evolution_[kpts_[i].class_id - 1].Ldet.at<float>(y, x)
-            - 2.0f*evolution_[kpts_[i].class_id].Ldet.at<float>(y, x);
+        Dss = evolution_[level + 1].Ldet.at<float>(y, x)
+            + evolution_[level - 1].Ldet.at<float>(y, x)
+            - 2.0f*evolution_[level].Ldet.at<float>(y, x);
 
-        Dxy = (1.0f / (4.0f*step)) * (evolution_[kpts_[i].class_id].Ldet.at<float>(y + step, x + step)
-            + evolution_[kpts_[i].class_id].Ldet.at<float>(y - step, x - step))
-            - (1.0f / (4.0f*step)) * (evolution_[kpts_[i].class_id].Ldet.at<float>(y - step, x + step)
-            + evolution_[kpts_[i].class_id].Ldet.at<float>(y + step, x - step));
+        Dxy = (1.0f / (4.0f*step)) * (evolution_[level].Ldet.at<float>(y + step, x + step)
+            + evolution_[level].Ldet.at<float>(y - step, x - step))
+            - (1.0f / (4.0f*step)) * (evolution_[level].Ldet.at<float>(y - step, x + step)
+            + evolution_[level].Ldet.at<float>(y + step, x - step));
 
-        Dxs = (1.0f / (4.0f*step)) * (evolution_[kpts_[i].class_id + 1].Ldet.at<float>(y, x + step)
-            + evolution_[kpts_[i].class_id - 1].Ldet.at<float>(y, x - step))
-            - (1.0f / (4.0f*step)) * (evolution_[kpts_[i].class_id + 1].Ldet.at<float>(y, x - step)
-            + evolution_[kpts_[i].class_id - 1].Ldet.at<float>(y, x + step));
+        Dxs = (1.0f / (4.0f*step)) * (evolution_[level + 1].Ldet.at<float>(y, x + step)
+            + evolution_[level - 1].Ldet.at<float>(y, x - step))
+            - (1.0f / (4.0f*step)) * (evolution_[level + 1].Ldet.at<float>(y, x - step)
+            + evolution_[level - 1].Ldet.at<float>(y, x + step));
 
-        Dys = (1.0f / (4.0f*step)) * (evolution_[kpts_[i].class_id + 1].Ldet.at<float>(y + step, x)
-            + evolution_[kpts_[i].class_id - 1].Ldet.at<float>(y - step, x))
-            - (1.0f / (4.0f*step)) * (evolution_[kpts_[i].class_id + 1].Ldet.at<float>(y - step, x)
-            + evolution_[kpts_[i].class_id - 1].Ldet.at<float>(y + step, x));
+        Dys = (1.0f / (4.0f*step)) * (evolution_[level + 1].Ldet.at<float>(y + step, x)
+            + evolution_[level - 1].Ldet.at<float>(y - step, x))
+            - (1.0f / (4.0f*step)) * (evolution_[level + 1].Ldet.at<float>(y - step, x)
+            + evolution_[level - 1].Ldet.at<float>(y + step, x));
 
         // Solve the linear system
         A.at<float>(0, 0) = Dxx;
@@ -465,7 +465,7 @@ void KAZEFeatures::Do_Subpixel_Refinement(std::vector<KeyPoint> &kpts) {
         if (fabs(dst.at<float>(0)) <= 1.0f && fabs(dst.at<float>(1)) <= 1.0f && fabs(dst.at<float>(2)) <= 1.0f) {
             kpts_[i].pt.x += dst.at<float>(0);
             kpts_[i].pt.y += dst.at<float>(1);
-            dsc = kpts_[i].octave + (kpts_[i].angle + dst.at<float>(2)) / ((float)(options_.nsublevels));
+            dsc = evolution_[level].octave + (kpts_[i].angle + dst.at<float>(2)) / ((float)(options_.nsublevels));
 
             // In OpenCV the size of a keypoint is the diameter!!
             kpts_[i].size = 2.0f*options_.soffset*pow(2.0f, dsc);
@@ -553,7 +553,7 @@ void KAZEFeatures::Feature_Description(std::vector<KeyPoint> &kpts, Mat &desc)
 {
     for(size_t i = 0; i < kpts.size(); i++)
     {
-        CV_Assert(0 <= kpts[i].class_id && kpts[i].class_id < static_cast<int>(evolution_.size()));
+        CV_Assert(0 <= kpts[i].octave && kpts[i].octave < static_cast<int>(evolution_.size()));
     }
 
     // Allocate memory for the matrix of descriptors
@@ -586,7 +586,7 @@ void KAZEFeatures::Compute_Main_Orientation(KeyPoint &kpt, const std::vector<TEv
     // Get the information from the keypoint
     xf = kpt.pt.x;
     yf = kpt.pt.y;
-    level = kpt.class_id;
+    level = kpt.octave;
     s = fRound(kpt.size / 2.0f);
 
     // Calculate derivatives responses for points within radius of 6*scale
@@ -677,7 +677,7 @@ void KAZE_Descriptor_Invoker::Get_KAZE_Upright_Descriptor_64(const KeyPoint &kpt
     yf = kpt.pt.y;
     xf = kpt.pt.x;
     scale = fRound(kpt.size / 2.0f);
-    level = kpt.class_id;
+    level = kpt.octave;
 
     i = -8;
 
@@ -806,7 +806,7 @@ void KAZE_Descriptor_Invoker::Get_KAZE_Descriptor_64(const KeyPoint &kpt, float 
     xf = kpt.pt.x;
     scale = fRound(kpt.size / 2.0f);
     angle = (kpt.angle * static_cast<float>(CV_PI)) / 180.f;
-    level = kpt.class_id;
+    level = kpt.octave;
     co = cos(angle);
     si = sin(angle);
 
@@ -936,7 +936,7 @@ void KAZE_Descriptor_Invoker::Get_KAZE_Upright_Descriptor_128(const KeyPoint &kp
     yf = kpt.pt.y;
     xf = kpt.pt.x;
     scale = fRound(kpt.size / 2.0f);
-    level = kpt.class_id;
+    level = kpt.octave;
 
     i = -8;
 
@@ -1089,7 +1089,7 @@ void KAZE_Descriptor_Invoker::Get_KAZE_Descriptor_128(const KeyPoint &kpt, float
     xf = kpt.pt.x;
     scale = fRound(kpt.size / 2.0f);
     angle = (kpt.angle * static_cast<float>(CV_PI)) / 180.f;
-    level = kpt.class_id;
+    level = kpt.octave;
     co = cos(angle);
     si = sin(angle);
 
