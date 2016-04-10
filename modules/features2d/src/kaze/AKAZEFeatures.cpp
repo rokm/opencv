@@ -239,10 +239,10 @@ void AKAZEFeatures::Compute_Determinant_Hessian_Response(void) {
     {
       for (int jx = 0; jx < evolution_[i].Ldet.cols; jx++)
       {
-        float lxx = *(evolution_[i].Lxx.ptr<float>(ix)+jx);
-        float lxy = *(evolution_[i].Lxy.ptr<float>(ix)+jx);
-        float lyy = *(evolution_[i].Lyy.ptr<float>(ix)+jx);
-        *(evolution_[i].Ldet.ptr<float>(ix)+jx) = (lxx*lyy - lxy*lxy);
+        float lxx = evolution_[i].Lxx.at<float>(ix, jx);
+        float lxy = evolution_[i].Lxy.at<float>(ix, jx);
+        float lyy = evolution_[i].Lyy.at<float>(ix, jx);
+        evolution_[i].Ldet.at<float>(ix, jx) = lxx*lyy - lxy*lxy;
       }
     }
   }
@@ -282,7 +282,7 @@ void AKAZEFeatures::Find_Scale_Space_Extrema(std::vector<KeyPoint>& kpts)
         is_extremum = false;
         is_repeated = false;
         is_out = false;
-        value = *(evolution_[i].Ldet.ptr<float>(ix)+jx);
+        value = evolution_[i].Ldet.at<float>(ix, jx);
 
         // Filter the points with the detector threshold
         if (value > options_.dthreshold && value >= options_.min_dthreshold &&
@@ -407,24 +407,24 @@ void AKAZEFeatures::Do_Subpixel_Refinement(std::vector<KeyPoint>& kpts)
     y = fRound(kpts[i].pt.y / ratio);
 
     // Compute the gradient
-    Dx = (0.5f)*(*(evolution_[kpts[i].class_id].Ldet.ptr<float>(y)+x + 1)
-        - *(evolution_[kpts[i].class_id].Ldet.ptr<float>(y)+x - 1));
-    Dy = (0.5f)*(*(evolution_[kpts[i].class_id].Ldet.ptr<float>(y + 1) + x)
-        - *(evolution_[kpts[i].class_id].Ldet.ptr<float>(y - 1) + x));
+    Dx = 0.5f * (evolution_[kpts[i].class_id].Ldet.at<float>(y, x + 1)
+        - evolution_[kpts[i].class_id].Ldet.at<float>(y, x - 1));
+    Dy = 0.5f * (evolution_[kpts[i].class_id].Ldet.at<float>(y + 1, x)
+        - evolution_[kpts[i].class_id].Ldet.at<float>(y - 1, x));
 
     // Compute the Hessian
-    Dxx = (*(evolution_[kpts[i].class_id].Ldet.ptr<float>(y)+x + 1)
-        + *(evolution_[kpts[i].class_id].Ldet.ptr<float>(y)+x - 1)
-        - 2.0f*(*(evolution_[kpts[i].class_id].Ldet.ptr<float>(y)+x)));
+    Dxx = evolution_[kpts[i].class_id].Ldet.at<float>(y, x + 1)
+        + evolution_[kpts[i].class_id].Ldet.at<float>(y, x - 1)
+        - 2.0f * evolution_[kpts[i].class_id].Ldet.at<float>(y, x);
 
-    Dyy = (*(evolution_[kpts[i].class_id].Ldet.ptr<float>(y + 1) + x)
-        + *(evolution_[kpts[i].class_id].Ldet.ptr<float>(y - 1) + x)
-        - 2.0f*(*(evolution_[kpts[i].class_id].Ldet.ptr<float>(y)+x)));
+    Dyy = evolution_[kpts[i].class_id].Ldet.at<float>(y + 1, x)
+        + evolution_[kpts[i].class_id].Ldet.at<float>(y - 1, x)
+        - 2.0f * evolution_[kpts[i].class_id].Ldet.at<float>(y, x);
 
-    Dxy = (0.25f)*(*(evolution_[kpts[i].class_id].Ldet.ptr<float>(y + 1) + x + 1)
-        + (*(evolution_[kpts[i].class_id].Ldet.ptr<float>(y - 1) + x - 1)))
-        - (0.25f)*(*(evolution_[kpts[i].class_id].Ldet.ptr<float>(y - 1) + x + 1)
-        + (*(evolution_[kpts[i].class_id].Ldet.ptr<float>(y + 1) + x - 1)));
+    Dxy = 0.25f * (evolution_[kpts[i].class_id].Ldet.at<float>(y + 1, x + 1)
+        + evolution_[kpts[i].class_id].Ldet.at<float>(y - 1, x - 1))
+        - 0.25f * (evolution_[kpts[i].class_id].Ldet.at<float>(y - 1, x + 1)
+        + evolution_[kpts[i].class_id].Ldet.at<float>(y + 1, x - 1));
 
     // Solve the linear system
     A(0, 0) = Dxx;
@@ -436,7 +436,7 @@ void AKAZEFeatures::Do_Subpixel_Refinement(std::vector<KeyPoint>& kpts)
     solve(A, b, dst, DECOMP_LU);
 
     if (fabs(dst(0)) <= 1.0f && fabs(dst(1)) <= 1.0f) {
-        kpts[i].pt.x = x + dst(0);
+      kpts[i].pt.x = x + dst(0);
       kpts[i].pt.y = y + dst(1);
       int power = fastpow(2, evolution_[kpts[i].class_id].octave);
       kpts[i].pt.x = (float)(kpts[i].pt.x*power + .5*(power-1));
@@ -805,8 +805,8 @@ void AKAZEFeatures::Compute_Main_Orientation(KeyPoint& kpt, const std::vector<TE
         ix = fRound(xf + i*s);
 
         gweight = gauss25[id[i + 6]][id[j + 6]];
-        resX[idx] = gweight*(*(evolution_[level].Lx.ptr<float>(iy)+ix));
-        resY[idx] = gweight*(*(evolution_[level].Ly.ptr<float>(iy)+ix));
+        resX[idx] = gweight * evolution_[level].Lx.at<float>(iy, ix);
+        resY[idx] = gweight * evolution_[level].Ly.at<float>(iy, ix);
 
         ++idx;
       }
@@ -931,16 +931,16 @@ void MSURF_Upright_Descriptor_64_Invoker::Get_MSURF_Upright_Descriptor_64(const 
           fx = sample_x - x1;
           fy = sample_y - y1;
 
-          res1 = *(evolution[level].Lx.ptr<float>(y1)+x1);
-          res2 = *(evolution[level].Lx.ptr<float>(y1)+x2);
-          res3 = *(evolution[level].Lx.ptr<float>(y2)+x1);
-          res4 = *(evolution[level].Lx.ptr<float>(y2)+x2);
+          res1 = evolution[level].Lx.at<float>(y1, x1);
+          res2 = evolution[level].Lx.at<float>(y1, x2);
+          res3 = evolution[level].Lx.at<float>(y2, x1);
+          res4 = evolution[level].Lx.at<float>(y2, x2);
           rx = (1.0f - fx)*(1.0f - fy)*res1 + fx*(1.0f - fy)*res2 + (1.0f - fx)*fy*res3 + fx*fy*res4;
 
-          res1 = *(evolution[level].Ly.ptr<float>(y1)+x1);
-          res2 = *(evolution[level].Ly.ptr<float>(y1)+x2);
-          res3 = *(evolution[level].Ly.ptr<float>(y2)+x1);
-          res4 = *(evolution[level].Ly.ptr<float>(y2)+x2);
+          res1 = evolution[level].Ly.at<float>(y1, x1);
+          res2 = evolution[level].Ly.at<float>(y1, x2);
+          res3 = evolution[level].Ly.at<float>(y2, x1);
+          res4 = evolution[level].Ly.at<float>(y2, x2);
           ry = (1.0f - fx)*(1.0f - fy)*res1 + fx*(1.0f - fy)*res2 + (1.0f - fx)*fy*res3 + fx*fy*res4;
 
           rx = gauss_s1*rx;
@@ -1058,16 +1058,16 @@ void MSURF_Descriptor_64_Invoker::Get_MSURF_Descriptor_64(const KeyPoint& kpt, f
           fx = sample_x - x1;
           fy = sample_y - y1;
 
-          res1 = *(evolution[level].Lx.ptr<float>(y1)+x1);
-          res2 = *(evolution[level].Lx.ptr<float>(y1)+x2);
-          res3 = *(evolution[level].Lx.ptr<float>(y2)+x1);
-          res4 = *(evolution[level].Lx.ptr<float>(y2)+x2);
+          res1 = evolution[level].Lx.at<float>(y1, x1);
+          res2 = evolution[level].Lx.at<float>(y1, x2);
+          res3 = evolution[level].Lx.at<float>(y2, x1);
+          res4 = evolution[level].Lx.at<float>(y2, x2);
           rx = (1.0f - fx)*(1.0f - fy)*res1 + fx*(1.0f - fy)*res2 + (1.0f - fx)*fy*res3 + fx*fy*res4;
 
-          res1 = *(evolution[level].Ly.ptr<float>(y1)+x1);
-          res2 = *(evolution[level].Ly.ptr<float>(y1)+x2);
-          res3 = *(evolution[level].Ly.ptr<float>(y2)+x1);
-          res4 = *(evolution[level].Ly.ptr<float>(y2)+x2);
+          res1 = evolution[level].Ly.at<float>(y1, x1);
+          res2 = evolution[level].Ly.at<float>(y1, x2);
+          res3 = evolution[level].Ly.at<float>(y2, x1);
+          res4 = evolution[level].Ly.at<float>(y2, x2);
           ry = (1.0f - fx)*(1.0f - fy)*res1 + fx*(1.0f - fy)*res2 + (1.0f - fx)*fy*res3 + fx*fy*res4;
 
           // Get the x and y derivatives on the rotated axis
@@ -1155,9 +1155,9 @@ void Upright_MLDB_Full_Descriptor_Invoker::Get_Upright_MLDB_Full_Descriptor(cons
           y1 = fRound(sample_y);
           x1 = fRound(sample_x);
 
-          ri = *(evolution[level].Lt.ptr<float>(y1)+x1);
-          rx = *(evolution[level].Lx.ptr<float>(y1)+x1);
-          ry = *(evolution[level].Ly.ptr<float>(y1)+x1);
+          ri = evolution[level].Lt.at<float>(y1, x1);
+          rx = evolution[level].Lx.at<float>(y1, x1);
+          ry = evolution[level].Ly.at<float>(y1, x1);
 
           di += ri;
           dx += rx;
@@ -1170,9 +1170,9 @@ void Upright_MLDB_Full_Descriptor_Invoker::Get_Upright_MLDB_Full_Descriptor(cons
       dx /= nsamples;
       dy /= nsamples;
 
-      *(values_1.ptr<float>(dcount2)) = di;
-      *(values_1.ptr<float>(dcount2)+1) = dx;
-      *(values_1.ptr<float>(dcount2)+2) = dy;
+      values_1.at<float>(dcount2, 0) = di;
+      values_1.at<float>(dcount2, 1) = dx;
+      values_1.at<float>(dcount2, 2) = dy;
       dcount2++;
     }
   }
@@ -1180,17 +1180,17 @@ void Upright_MLDB_Full_Descriptor_Invoker::Get_Upright_MLDB_Full_Descriptor(cons
   // Do binary comparison first level
   for (int i = 0; i < 4; i++) {
     for (int j = i + 1; j < 4; j++) {
-      if (*(values_1.ptr<float>(i)) > *(values_1.ptr<float>(j))) {
+      if (values_1.at<float>(i, 0) > values_1.at<float>(j, 0)) {
         desc[dcount1 / 8] |= (1 << (dcount1 % 8));
       }
       dcount1++;
 
-      if (*(values_1.ptr<float>(i)+1) > *(values_1.ptr<float>(j)+1)) {
+      if (values_1.at<float>(i, 1) > values_1.at<float>(j, 1)) {
         desc[dcount1 / 8] |= (1 << (dcount1 % 8));
       }
       dcount1++;
 
-      if (*(values_1.ptr<float>(i)+2) > *(values_1.ptr<float>(j)+2)) {
+      if (values_1.at<float>(i, 2) > values_1.at<float>(j, 2)) {
         desc[dcount1 / 8] |= (1 << (dcount1 % 8));
       }
       dcount1++;
@@ -1216,9 +1216,9 @@ void Upright_MLDB_Full_Descriptor_Invoker::Get_Upright_MLDB_Full_Descriptor(cons
           y1 = fRound(sample_y);
           x1 = fRound(sample_x);
 
-          ri = *(evolution[level].Lt.ptr<float>(y1)+x1);
-          rx = *(evolution[level].Lx.ptr<float>(y1)+x1);
-          ry = *(evolution[level].Ly.ptr<float>(y1)+x1);
+          ri = evolution[level].Lt.at<float>(y1, x1);
+          rx = evolution[level].Lx.at<float>(y1, x1);
+          ry = evolution[level].Ly.at<float>(y1, x1);
 
           di += ri;
           dx += rx;
@@ -1231,9 +1231,9 @@ void Upright_MLDB_Full_Descriptor_Invoker::Get_Upright_MLDB_Full_Descriptor(cons
       dx /= nsamples;
       dy /= nsamples;
 
-      *(values_2.ptr<float>(dcount2)) = di;
-      *(values_2.ptr<float>(dcount2)+1) = dx;
-      *(values_2.ptr<float>(dcount2)+2) = dy;
+      values_2.at<float>(dcount2, 0) = di;
+      values_2.at<float>(dcount2, 1) = dx;
+      values_2.at<float>(dcount2, 2) = dy;
       dcount2++;
     }
   }
@@ -1242,17 +1242,17 @@ void Upright_MLDB_Full_Descriptor_Invoker::Get_Upright_MLDB_Full_Descriptor(cons
   dcount2 = 0;
   for (int i = 0; i < 9; i++) {
     for (int j = i + 1; j < 9; j++) {
-      if (*(values_2.ptr<float>(i)) > *(values_2.ptr<float>(j))) {
+      if (values_2.at<float>(i, 0) > values_2.at<float>(j, 0)) {
         desc[dcount1 / 8] |= (1 << (dcount1 % 8));
       }
       dcount1++;
 
-      if (*(values_2.ptr<float>(i)+1) > *(values_2.ptr<float>(j)+1)) {
+      if (values_2.at<float>(i, 1) > values_2.at<float>(j, 1)) {
         desc[dcount1 / 8] |= (1 << (dcount1 % 8));
       }
       dcount1++;
 
-      if (*(values_2.ptr<float>(i)+2) > *(values_2.ptr<float>(j)+2)) {
+      if (values_2.at<float>(i, 2) > values_2.at<float>(j, 2)) {
         desc[dcount1 / 8] |= (1 << (dcount1 % 8));
       }
       dcount1++;
@@ -1278,9 +1278,9 @@ void Upright_MLDB_Full_Descriptor_Invoker::Get_Upright_MLDB_Full_Descriptor(cons
           y1 = fRound(sample_y);
           x1 = fRound(sample_x);
 
-          ri = *(evolution[level].Lt.ptr<float>(y1)+x1);
-          rx = *(evolution[level].Lx.ptr<float>(y1)+x1);
-          ry = *(evolution[level].Ly.ptr<float>(y1)+x1);
+          ri = evolution[level].Lt.at<float>(y1, x1);
+          rx = evolution[level].Lx.at<float>(y1, x1);
+          ry = evolution[level].Ly.at<float>(y1, x1);
 
           di += ri;
           dx += rx;
@@ -1293,9 +1293,9 @@ void Upright_MLDB_Full_Descriptor_Invoker::Get_Upright_MLDB_Full_Descriptor(cons
       dx /= nsamples;
       dy /= nsamples;
 
-      *(values_3.ptr<float>(dcount2)) = di;
-      *(values_3.ptr<float>(dcount2)+1) = dx;
-      *(values_3.ptr<float>(dcount2)+2) = dy;
+      values_3.at<float>(dcount2, 0) = di;
+      values_3.at<float>(dcount2, 1) = dx;
+      values_3.at<float>(dcount2, 2) = dy;
       dcount2++;
     }
   }
@@ -1304,17 +1304,17 @@ void Upright_MLDB_Full_Descriptor_Invoker::Get_Upright_MLDB_Full_Descriptor(cons
   dcount2 = 0;
   for (int i = 0; i < 16; i++) {
     for (int j = i + 1; j < 16; j++) {
-      if (*(values_3.ptr<float>(i)) > *(values_3.ptr<float>(j))) {
+      if (values_3.at<float>(i, 0) > values_3.at<float>(j, 0)) {
         desc[dcount1 / 8] |= (1 << (dcount1 % 8));
       }
       dcount1++;
 
-      if (*(values_3.ptr<float>(i)+1) > *(values_3.ptr<float>(j)+1)) {
+      if (values_3.at<float>(i, 1) > values_3.at<float>(j, 1)) {
         desc[dcount1 / 8] |= (1 << (dcount1 % 8));
       }
       dcount1++;
 
-      if (*(values_3.ptr<float>(i)+2) > *(values_3.ptr<float>(j)+2)) {
+      if (values_3.at<float>(i, 2) > values_3.at<float>(j, 2)) {
         desc[dcount1 / 8] |= (1 << (dcount1 % 8));
       }
       dcount1++;
@@ -1344,12 +1344,12 @@ void MLDB_Full_Descriptor_Invoker::MLDB_Fill_Values(float* values, int sample_st
                 int y1 = fRound(sample_y);
                 int x1 = fRound(sample_x);
 
-                float ri = *(evolution[level].Lt.ptr<float>(y1)+x1);
+                float ri = evolution[level].Lt.at<float>(y1, x1);
                 di += ri;
 
                 if(chan > 1) {
-                    float rx = *(evolution[level].Lx.ptr<float>(y1)+x1);
-                    float ry = *(evolution[level].Ly.ptr<float>(y1)+x1);
+                    float rx = evolution[level].Lx.at<float>(y1, x1);
+                    float ry = evolution[level].Ly.at<float>(y1, x1);
                     if (chan == 2) {
                       dx += sqrtf(rx*rx + ry*ry);
                     }
@@ -1486,11 +1486,11 @@ void MLDB_Descriptor_Subset_Invoker::Get_MLDB_Descriptor_Subset(const KeyPoint& 
         y1 = fRound(sample_y);
         x1 = fRound(sample_x);
 
-        di += *(evolution[level].Lt.ptr<float>(y1)+x1);
+        di += evolution[level].Lt.at<float>(y1, x1);
 
         if (options.descriptor_channels > 1) {
-          rx = *(evolution[level].Lx.ptr<float>(y1)+x1);
-          ry = *(evolution[level].Ly.ptr<float>(y1)+x1);
+          rx = evolution[level].Lx.at<float>(y1, x1);
+          ry = evolution[level].Ly.at<float>(y1, x1);
 
           if (options.descriptor_channels == 2) {
             dx += sqrtf(rx*rx + ry*ry);
@@ -1504,14 +1504,14 @@ void MLDB_Descriptor_Subset_Invoker::Get_MLDB_Descriptor_Subset(const KeyPoint& 
       }
     }
 
-    *(values.ptr<float>(options.descriptor_channels*i)) = di;
+    values.at<float>(options.descriptor_channels*i) = di;
 
     if (options.descriptor_channels == 2) {
-      *(values.ptr<float>(options.descriptor_channels*i + 1)) = dx;
+      values.at<float>(options.descriptor_channels*i + 1) = dx;
     }
     else if (options.descriptor_channels == 3) {
-      *(values.ptr<float>(options.descriptor_channels*i + 1)) = dx;
-      *(values.ptr<float>(options.descriptor_channels*i + 2)) = dy;
+      values.at<float>(options.descriptor_channels*i + 1) = dx;
+      values.at<float>(options.descriptor_channels*i + 2) = dy;
     }
   }
 
@@ -1573,11 +1573,11 @@ void Upright_MLDB_Descriptor_Subset_Invoker::Get_Upright_MLDB_Descriptor_Subset(
 
         y1 = fRound(sample_y);
         x1 = fRound(sample_x);
-        di += *(evolution[level].Lt.ptr<float>(y1)+x1);
+        di += evolution[level].Lt.at<float>(y1, x1);
 
         if (options.descriptor_channels > 1) {
-          rx = *(evolution[level].Lx.ptr<float>(y1)+x1);
-          ry = *(evolution[level].Ly.ptr<float>(y1)+x1);
+          rx = evolution[level].Lx.at<float>(y1, x1);
+          ry = evolution[level].Ly.at<float>(y1, x1);
 
           if (options.descriptor_channels == 2) {
             dx += sqrtf(rx*rx + ry*ry);
@@ -1590,14 +1590,14 @@ void Upright_MLDB_Descriptor_Subset_Invoker::Get_Upright_MLDB_Descriptor_Subset(
       }
     }
 
-    *(values.ptr<float>(options.descriptor_channels*i)) = di;
+    values.at<float>(options.descriptor_channels*i) = di;
 
     if (options.descriptor_channels == 2) {
-      *(values.ptr<float>(options.descriptor_channels*i + 1)) = dx;
+      values.at<float>(options.descriptor_channels*i + 1) = dx;
     }
     else if (options.descriptor_channels == 3) {
-      *(values.ptr<float>(options.descriptor_channels*i + 1)) = dx;
-      *(values.ptr<float>(options.descriptor_channels*i + 2)) = dy;
+      values.at<float>(options.descriptor_channels*i + 1) = dx;
+      values.at<float>(options.descriptor_channels*i + 2) = dy;
     }
   }
 
