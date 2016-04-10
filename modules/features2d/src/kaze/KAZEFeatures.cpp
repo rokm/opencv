@@ -166,10 +166,10 @@ void KAZEFeatures::Compute_Detector_Response(void)
         {
                         for (int jx = 0; jx < options_.img_width; jx++)
             {
-                lxx = *(evolution_[i].Lxx.ptr<float>(ix)+jx);
-                lxy = *(evolution_[i].Lxy.ptr<float>(ix)+jx);
-                lyy = *(evolution_[i].Lyy.ptr<float>(ix)+jx);
-                *(evolution_[i].Ldet.ptr<float>(ix)+jx) = (lxx*lyy - lxy*lxy);
+                lxx = evolution_[i].Lxx.at<float>(ix,jx);
+                lxy = evolution_[i].Lxy.at<float>(ix,jx);
+                lyy = evolution_[i].Lyy.at<float>(ix,jx);
+                evolution_[i].Ldet.at<float>(ix,jx) = lxx*lyy - lxy*lxy;
             }
         }
     }
@@ -253,12 +253,12 @@ public:
                 for (int jx = 1; jx < options_.img_width - 1; jx++)
                 {
                     is_extremum = false;
-                    value = *(evolution[i].Ldet.ptr<float>(ix)+jx);
+                    value = evolution[i].Ldet.at<float>(ix,jx);
 
                     // Filter the points with the detector threshold
                     if (value > options_.dthreshold)
                     {
-                        if (value >= *(evolution[i].Ldet.ptr<float>(ix)+jx - 1))
+                        if (value >= evolution[i].Ldet.at<float>(ix,jx-1))
                         {
                             // First check on the same scale
                             if (check_maximum_neighbourhood(evolution[i].Ldet, 1, value, ix, jx, 1))
@@ -412,63 +412,63 @@ void KAZEFeatures::Do_Subpixel_Refinement(std::vector<KeyPoint> &kpts) {
         y = static_cast<int>(kpts_[i].pt.y);
 
         // Compute the gradient
-        Dx = (1.0f / (2.0f*step))*(*(evolution_[kpts_[i].class_id].Ldet.ptr<float>(y)+x + step)
-            - *(evolution_[kpts_[i].class_id].Ldet.ptr<float>(y)+x - step));
-        Dy = (1.0f / (2.0f*step))*(*(evolution_[kpts_[i].class_id].Ldet.ptr<float>(y + step) + x)
-            - *(evolution_[kpts_[i].class_id].Ldet.ptr<float>(y - step) + x));
-        Ds = 0.5f*(*(evolution_[kpts_[i].class_id + 1].Ldet.ptr<float>(y)+x)
-            - *(evolution_[kpts_[i].class_id - 1].Ldet.ptr<float>(y)+x));
+        Dx = (1.0f / (2.0f*step)) * (evolution_[kpts_[i].class_id].Ldet.at<float>(y, x + step)
+            - evolution_[kpts_[i].class_id].Ldet.at<float>(y, x - step));
+        Dy = (1.0f / (2.0f*step)) * (evolution_[kpts_[i].class_id].Ldet.at<float>(y + step, x)
+            - evolution_[kpts_[i].class_id].Ldet.at<float>(y - step, x));
+        Ds = 0.5f * (evolution_[kpts_[i].class_id + 1].Ldet.at<float>(y, x)
+            - evolution_[kpts_[i].class_id - 1].Ldet.at<float>(y, x));
 
         // Compute the Hessian
-        Dxx = (1.0f / (step*step))*(*(evolution_[kpts_[i].class_id].Ldet.ptr<float>(y)+x + step)
-            + *(evolution_[kpts_[i].class_id].Ldet.ptr<float>(y)+x - step)
-            - 2.0f*(*(evolution_[kpts_[i].class_id].Ldet.ptr<float>(y)+x)));
+        Dxx = (1.0f / (step*step)) * (evolution_[kpts_[i].class_id].Ldet.at<float>(y, x + step)
+            + evolution_[kpts_[i].class_id].Ldet.at<float>(y, x - step)
+            - 2.0f*evolution_[kpts_[i].class_id].Ldet.at<float>(y,x));
 
-        Dyy = (1.0f / (step*step))*(*(evolution_[kpts_[i].class_id].Ldet.ptr<float>(y + step) + x)
-            + *(evolution_[kpts_[i].class_id].Ldet.ptr<float>(y - step) + x)
-            - 2.0f*(*(evolution_[kpts_[i].class_id].Ldet.ptr<float>(y)+x)));
+        Dyy = (1.0f / (step*step)) * (evolution_[kpts_[i].class_id].Ldet.at<float>(y + step, x)
+            + evolution_[kpts_[i].class_id].Ldet.at<float>(y - step, x)
+            - 2.0f*evolution_[kpts_[i].class_id].Ldet.at<float>(y, x));
 
-        Dss = *(evolution_[kpts_[i].class_id + 1].Ldet.ptr<float>(y)+x)
-            + *(evolution_[kpts_[i].class_id - 1].Ldet.ptr<float>(y)+x)
-            - 2.0f*(*(evolution_[kpts_[i].class_id].Ldet.ptr<float>(y)+x));
+        Dss = evolution_[kpts_[i].class_id + 1].Ldet.at<float>(y, x)
+            + evolution_[kpts_[i].class_id - 1].Ldet.at<float>(y, x)
+            - 2.0f*evolution_[kpts_[i].class_id].Ldet.at<float>(y, x);
 
-        Dxy = (1.0f / (4.0f*step))*(*(evolution_[kpts_[i].class_id].Ldet.ptr<float>(y + step) + x + step)
-            + (*(evolution_[kpts_[i].class_id].Ldet.ptr<float>(y - step) + x - step)))
-            - (1.0f / (4.0f*step))*(*(evolution_[kpts_[i].class_id].Ldet.ptr<float>(y - step) + x + step)
-            + (*(evolution_[kpts_[i].class_id].Ldet.ptr<float>(y + step) + x - step)));
+        Dxy = (1.0f / (4.0f*step)) * (evolution_[kpts_[i].class_id].Ldet.at<float>(y + step, x + step)
+            + evolution_[kpts_[i].class_id].Ldet.at<float>(y - step, x - step))
+            - (1.0f / (4.0f*step)) * (evolution_[kpts_[i].class_id].Ldet.at<float>(y - step, x + step)
+            + evolution_[kpts_[i].class_id].Ldet.at<float>(y + step, x - step));
 
-        Dxs = (1.0f / (4.0f*step))*(*(evolution_[kpts_[i].class_id + 1].Ldet.ptr<float>(y)+x + step)
-            + (*(evolution_[kpts_[i].class_id - 1].Ldet.ptr<float>(y)+x - step)))
-            - (1.0f / (4.0f*step))*(*(evolution_[kpts_[i].class_id + 1].Ldet.ptr<float>(y)+x - step)
-            + (*(evolution_[kpts_[i].class_id - 1].Ldet.ptr<float>(y)+x + step)));
+        Dxs = (1.0f / (4.0f*step)) * (evolution_[kpts_[i].class_id + 1].Ldet.at<float>(y, x + step)
+            + evolution_[kpts_[i].class_id - 1].Ldet.at<float>(y, x - step))
+            - (1.0f / (4.0f*step)) * (evolution_[kpts_[i].class_id + 1].Ldet.at<float>(y, x - step)
+            + evolution_[kpts_[i].class_id - 1].Ldet.at<float>(y, x + step));
 
-        Dys = (1.0f / (4.0f*step))*(*(evolution_[kpts_[i].class_id + 1].Ldet.ptr<float>(y + step) + x)
-            + (*(evolution_[kpts_[i].class_id - 1].Ldet.ptr<float>(y - step) + x)))
-            - (1.0f / (4.0f*step))*(*(evolution_[kpts_[i].class_id + 1].Ldet.ptr<float>(y - step) + x)
-            + (*(evolution_[kpts_[i].class_id - 1].Ldet.ptr<float>(y + step) + x)));
+        Dys = (1.0f / (4.0f*step)) * (evolution_[kpts_[i].class_id + 1].Ldet.at<float>(y + step, x)
+            + evolution_[kpts_[i].class_id - 1].Ldet.at<float>(y - step, x))
+            - (1.0f / (4.0f*step)) * (evolution_[kpts_[i].class_id + 1].Ldet.at<float>(y - step, x)
+            + evolution_[kpts_[i].class_id - 1].Ldet.at<float>(y + step, x));
 
         // Solve the linear system
-        *(A.ptr<float>(0)) = Dxx;
-        *(A.ptr<float>(1) + 1) = Dyy;
-        *(A.ptr<float>(2) + 2) = Dss;
+        A.at<float>(0, 0) = Dxx;
+        A.at<float>(1, 1) = Dyy;
+        A.at<float>(2, 2) = Dss;
 
-        *(A.ptr<float>(0) + 1) = *(A.ptr<float>(1)) = Dxy;
-        *(A.ptr<float>(0) + 2) = *(A.ptr<float>(2)) = Dxs;
-        *(A.ptr<float>(1) + 2) = *(A.ptr<float>(2) + 1) = Dys;
+        A.at<float>(0, 1) = A.at<float>(1, 0) = Dxy;
+        A.at<float>(0, 2) = A.at<float>(2, 0) = Dxs;
+        A.at<float>(1, 2) = A.at<float>(2, 1) = Dys;
 
-        *(b.ptr<float>(0)) = -Dx;
-        *(b.ptr<float>(1)) = -Dy;
-        *(b.ptr<float>(2)) = -Ds;
+        b.at<float>(0) = -Dx;
+        b.at<float>(1) = -Dy;
+        b.at<float>(2) = -Ds;
 
         solve(A, b, dst, DECOMP_LU);
 
-        if (fabs(*(dst.ptr<float>(0))) <= 1.0f && fabs(*(dst.ptr<float>(1))) <= 1.0f && fabs(*(dst.ptr<float>(2))) <= 1.0f) {
-            kpts_[i].pt.x += *(dst.ptr<float>(0));
-            kpts_[i].pt.y += *(dst.ptr<float>(1));
-                        dsc = kpts_[i].octave + (kpts_[i].angle + *(dst.ptr<float>(2))) / ((float)(options_.nsublevels));
+        if (fabs(dst.at<float>(0)) <= 1.0f && fabs(dst.at<float>(1)) <= 1.0f && fabs(dst.at<float>(2)) <= 1.0f) {
+            kpts_[i].pt.x += dst.at<float>(0);
+            kpts_[i].pt.y += dst.at<float>(1);
+            dsc = kpts_[i].octave + (kpts_[i].angle + dst.at<float>(2)) / ((float)(options_.nsublevels));
 
             // In OpenCV the size of a keypoint is the diameter!!
-                        kpts_[i].size = 2.0f*options_.soffset*pow((float)2.0f, dsc);
+            kpts_[i].size = 2.0f*options_.soffset*pow(2.0f, dsc);
             kpts_[i].angle = 0.0;
         }
         // Set the points to be deleted after the for loop
@@ -505,9 +505,9 @@ public:
 
     void operator() (const Range& range) const
     {
-                std::vector<KeyPoint> &kpts      = *kpts_;
-                Mat                   &desc      = *desc_;
-                std::vector<TEvolution>   &evolution = *evolution_;
+        std::vector<KeyPoint> &kpts      = *kpts_;
+        Mat                   &desc      = *desc_;
+        std::vector<TEvolution>   &evolution = *evolution_;
 
         for (int i = range.start; i < range.end; i++)
         {
@@ -515,19 +515,19 @@ public:
             if (options_.upright)
             {
                 kpts[i].angle = 0.0;
-                                if (options_.extended)
-                    Get_KAZE_Upright_Descriptor_128(kpts[i], desc.ptr<float>((int)i));
+                if (options_.extended)
+                    Get_KAZE_Upright_Descriptor_128(kpts[i], desc.ptr<float>(i));
                 else
-                    Get_KAZE_Upright_Descriptor_64(kpts[i], desc.ptr<float>((int)i));
+                    Get_KAZE_Upright_Descriptor_64(kpts[i], desc.ptr<float>(i));
             }
             else
             {
-                                KAZEFeatures::Compute_Main_Orientation(kpts[i], evolution, options_);
+                KAZEFeatures::Compute_Main_Orientation(kpts[i], evolution, options_);
 
-                                if (options_.extended)
-                    Get_KAZE_Descriptor_128(kpts[i], desc.ptr<float>((int)i));
+                if (options_.extended)
+                    Get_KAZE_Descriptor_128(kpts[i], desc.ptr<float>(i));
                 else
-                    Get_KAZE_Descriptor_64(kpts[i], desc.ptr<float>((int)i));
+                    Get_KAZE_Descriptor_64(kpts[i], desc.ptr<float>(i));
             }
         }
     }
@@ -537,10 +537,10 @@ private:
     void Get_KAZE_Upright_Descriptor_128(const KeyPoint& kpt, float* desc) const;
     void Get_KAZE_Descriptor_128(const KeyPoint& kpt, float *desc) const;
 
-        std::vector<KeyPoint> * kpts_;
-        Mat                   * desc_;
-        std::vector<TEvolution>   * evolution_;
-        KAZEOptions                 options_;
+    std::vector<KeyPoint> * kpts_;
+    Mat                   * desc_;
+    std::vector<TEvolution>   * evolution_;
+    KAZEOptions                 options_;
 };
 
 /* ************************************************************************* */
@@ -557,14 +557,14 @@ void KAZEFeatures::Feature_Description(std::vector<KeyPoint> &kpts, Mat &desc)
     }
 
     // Allocate memory for the matrix of descriptors
-        if (options_.extended == true) {
+    if (options_.extended == true) {
         desc = Mat::zeros((int)kpts.size(), 128, CV_32FC1);
     }
     else {
         desc = Mat::zeros((int)kpts.size(), 64, CV_32FC1);
     }
 
-        parallel_for_(Range(0, (int)kpts.size()), KAZE_Descriptor_Invoker(kpts, desc, evolution_, options_));
+    parallel_for_(Range(0, (int)kpts.size()), KAZE_Descriptor_Invoker(kpts, desc, evolution_, options_));
 }
 
 /* ************************************************************************* */
@@ -598,8 +598,8 @@ void KAZEFeatures::Compute_Main_Orientation(KeyPoint &kpt, const std::vector<TEv
 
                 if (iy >= 0 && iy < options.img_height && ix >= 0 && ix < options.img_width) {
                     gweight = gaussian(iy - yf, ix - xf, 2.5f*s);
-                    resX[idx] = gweight*(*(evolution_[level].Lx.ptr<float>(iy)+ix));
-                    resY[idx] = gweight*(*(evolution_[level].Ly.ptr<float>(iy)+ix));
+                    resX[idx] = gweight * evolution_[level].Lx.at<float>(iy, ix);
+                    resY[idx] = gweight * evolution_[level].Ly.at<float>(iy, ix);
                 }
                 else {
                     resX[idx] = 0.0;
@@ -714,26 +714,26 @@ void KAZE_Descriptor_Invoker::Get_KAZE_Upright_Descriptor_64(const KeyPoint &kpt
                     y1 = (int)(sample_y - 0.5f);
                     x1 = (int)(sample_x - 0.5f);
 
-                                        checkDescriptorLimits(x1, y1, options_.img_width, options_.img_height);
+                    checkDescriptorLimits(x1, y1, options_.img_width, options_.img_height);
 
                     y2 = (int)(sample_y + 0.5f);
                     x2 = (int)(sample_x + 0.5f);
 
-                                        checkDescriptorLimits(x2, y2, options_.img_width, options_.img_height);
+                    checkDescriptorLimits(x2, y2, options_.img_width, options_.img_height);
 
                     fx = sample_x - x1;
                     fy = sample_y - y1;
 
-                                        res1 = *(evolution[level].Lx.ptr<float>(y1)+x1);
-                                        res2 = *(evolution[level].Lx.ptr<float>(y1)+x2);
-                                        res3 = *(evolution[level].Lx.ptr<float>(y2)+x1);
-                                        res4 = *(evolution[level].Lx.ptr<float>(y2)+x2);
+                    res1 = evolution[level].Lx.at<float>(y1, x1);
+                    res2 = evolution[level].Lx.at<float>(y1, x2);
+                    res3 = evolution[level].Lx.at<float>(y2, x1);
+                    res4 = evolution[level].Lx.at<float>(y2, x2);
                     rx = (1.0f - fx)*(1.0f - fy)*res1 + fx*(1.0f - fy)*res2 + (1.0f - fx)*fy*res3 + fx*fy*res4;
 
-                                        res1 = *(evolution[level].Ly.ptr<float>(y1)+x1);
-                                        res2 = *(evolution[level].Ly.ptr<float>(y1)+x2);
-                                        res3 = *(evolution[level].Ly.ptr<float>(y2)+x1);
-                                        res4 = *(evolution[level].Ly.ptr<float>(y2)+x2);
+                    res1 = evolution[level].Ly.at<float>(y1, x1);
+                    res2 = evolution[level].Ly.at<float>(y1, x2);
+                    res3 = evolution[level].Ly.at<float>(y2, x1);
+                    res4 = evolution[level].Ly.at<float>(y2, x2);
                     ry = (1.0f - fx)*(1.0f - fy)*res1 + fx*(1.0f - fy)*res2 + (1.0f - fx)*fy*res3 + fx*fy*res4;
 
                     rx = gauss_s1*rx;
@@ -791,7 +791,7 @@ void KAZE_Descriptor_Invoker::Get_KAZE_Descriptor_64(const KeyPoint &kpt, float 
     int kx = 0, ky = 0, i = 0, j = 0, dcount = 0;
     int dsize = 0, scale = 0, level = 0;
 
-        std::vector<TEvolution>& evolution = *evolution_;
+    std::vector<TEvolution>& evolution = *evolution_;
 
     // Subregion centers for the 4x4 gaussian weighting
     float cx = -0.5f, cy = 0.5f;
@@ -846,26 +846,26 @@ void KAZE_Descriptor_Invoker::Get_KAZE_Descriptor_64(const KeyPoint &kpt, float 
                     y1 = fRound(sample_y - 0.5f);
                     x1 = fRound(sample_x - 0.5f);
 
-                                        checkDescriptorLimits(x1, y1, options_.img_width, options_.img_height);
+                    checkDescriptorLimits(x1, y1, options_.img_width, options_.img_height);
 
                     y2 = (int)(sample_y + 0.5f);
                     x2 = (int)(sample_x + 0.5f);
 
-                                        checkDescriptorLimits(x2, y2, options_.img_width, options_.img_height);
+                    checkDescriptorLimits(x2, y2, options_.img_width, options_.img_height);
 
                     fx = sample_x - x1;
                     fy = sample_y - y1;
 
-                                        res1 = *(evolution[level].Lx.ptr<float>(y1)+x1);
-                                        res2 = *(evolution[level].Lx.ptr<float>(y1)+x2);
-                                        res3 = *(evolution[level].Lx.ptr<float>(y2)+x1);
-                                        res4 = *(evolution[level].Lx.ptr<float>(y2)+x2);
+                    res1 = evolution[level].Lx.at<float>(y1, x1);
+                    res2 = evolution[level].Lx.at<float>(y1, x2);
+                    res3 = evolution[level].Lx.at<float>(y2, x1);
+                    res4 = evolution[level].Lx.at<float>(y2, x2);
                     rx = (1.0f - fx)*(1.0f - fy)*res1 + fx*(1.0f - fy)*res2 + (1.0f - fx)*fy*res3 + fx*fy*res4;
 
-                                        res1 = *(evolution[level].Ly.ptr<float>(y1)+x1);
-                                        res2 = *(evolution[level].Ly.ptr<float>(y1)+x2);
-                                        res3 = *(evolution[level].Ly.ptr<float>(y2)+x1);
-                                        res4 = *(evolution[level].Ly.ptr<float>(y2)+x2);
+                    res1 = evolution[level].Ly.at<float>(y1, x1);
+                    res2 = evolution[level].Ly.at<float>(y1, x2);
+                    res3 = evolution[level].Ly.at<float>(y2, x1);
+                    res4 = evolution[level].Ly.at<float>(y2, x2);
                     ry = (1.0f - fx)*(1.0f - fy)*res1 + fx*(1.0f - fy)*res2 + (1.0f - fx)*fy*res3 + fx*fy*res4;
 
                     // Get the x and y derivatives on the rotated axis
@@ -925,7 +925,7 @@ void KAZE_Descriptor_Invoker::Get_KAZE_Upright_Descriptor_128(const KeyPoint &kp
     // Subregion centers for the 4x4 gaussian weighting
     float cx = -0.5f, cy = 0.5f;
 
-        std::vector<TEvolution>& evolution = *evolution_;
+    std::vector<TEvolution>& evolution = *evolution_;
 
     // Set the descriptor size and the sample and pattern sizes
     dsize = 128;
@@ -976,26 +976,26 @@ void KAZE_Descriptor_Invoker::Get_KAZE_Upright_Descriptor_128(const KeyPoint &kp
                     y1 = (int)(sample_y - 0.5f);
                     x1 = (int)(sample_x - 0.5f);
 
-                                        checkDescriptorLimits(x1, y1, options_.img_width, options_.img_height);
+                    checkDescriptorLimits(x1, y1, options_.img_width, options_.img_height);
 
                     y2 = (int)(sample_y + 0.5f);
                     x2 = (int)(sample_x + 0.5f);
 
-                                        checkDescriptorLimits(x2, y2, options_.img_width, options_.img_height);
+                    checkDescriptorLimits(x2, y2, options_.img_width, options_.img_height);
 
                     fx = sample_x - x1;
                     fy = sample_y - y1;
 
-                                        res1 = *(evolution[level].Lx.ptr<float>(y1)+x1);
-                                        res2 = *(evolution[level].Lx.ptr<float>(y1)+x2);
-                                        res3 = *(evolution[level].Lx.ptr<float>(y2)+x1);
-                                        res4 = *(evolution[level].Lx.ptr<float>(y2)+x2);
+                    res1 = evolution[level].Lx.at<float>(y1, x1);
+                    res2 = evolution[level].Lx.at<float>(y1, x2);
+                    res3 = evolution[level].Lx.at<float>(y2, x1);
+                    res4 = evolution[level].Lx.at<float>(y2, x2);
                     rx = (1.0f - fx)*(1.0f - fy)*res1 + fx*(1.0f - fy)*res2 + (1.0f - fx)*fy*res3 + fx*fy*res4;
 
-                                        res1 = *(evolution[level].Ly.ptr<float>(y1)+x1);
-                                        res2 = *(evolution[level].Ly.ptr<float>(y1)+x2);
-                                        res3 = *(evolution[level].Ly.ptr<float>(y2)+x1);
-                                        res4 = *(evolution[level].Ly.ptr<float>(y2)+x2);
+                    res1 = evolution[level].Ly.at<float>(y1, x1);
+                    res2 = evolution[level].Ly.at<float>(y1, x2);
+                    res3 = evolution[level].Ly.at<float>(y2, x1);
+                    res4 = evolution[level].Ly.at<float>(y2, x2);
                     ry = (1.0f - fx)*(1.0f - fy)*res1 + fx*(1.0f - fy)*res2 + (1.0f - fx)*fy*res3 + fx*fy*res4;
 
                     rx = gauss_s1*rx;
@@ -1036,7 +1036,7 @@ void KAZE_Descriptor_Invoker::Get_KAZE_Upright_Descriptor_128(const KeyPoint &kp
 
             // Store the current length^2 of the vector
             len += (dxp*dxp + dxn*dxn + mdxp*mdxp + mdxn*mdxn +
-                dyp*dyp + dyn*dyn + mdyp*mdyp + mdyn*mdyn)*gauss_s2*gauss_s2;
+            dyp*dyp + dyn*dyn + mdyp*mdyp + mdyn*mdyn)*gauss_s2*gauss_s2;
 
             j += 9;
         }
@@ -1074,7 +1074,7 @@ void KAZE_Descriptor_Invoker::Get_KAZE_Descriptor_128(const KeyPoint &kpt, float
     int kx = 0, ky = 0, i = 0, j = 0, dcount = 0;
     int dsize = 0, scale = 0, level = 0;
 
-        std::vector<TEvolution>& evolution = *evolution_;
+    std::vector<TEvolution>& evolution = *evolution_;
 
     // Subregion centers for the 4x4 gaussian weighting
     float cx = -0.5f, cy = 0.5f;
@@ -1132,26 +1132,26 @@ void KAZE_Descriptor_Invoker::Get_KAZE_Descriptor_128(const KeyPoint &kpt, float
                     y1 = fRound(sample_y - 0.5f);
                     x1 = fRound(sample_x - 0.5f);
 
-                                        checkDescriptorLimits(x1, y1, options_.img_width, options_.img_height);
+                    checkDescriptorLimits(x1, y1, options_.img_width, options_.img_height);
 
                     y2 = (int)(sample_y + 0.5f);
                     x2 = (int)(sample_x + 0.5f);
 
-                                        checkDescriptorLimits(x2, y2, options_.img_width, options_.img_height);
+                    checkDescriptorLimits(x2, y2, options_.img_width, options_.img_height);
 
                     fx = sample_x - x1;
                     fy = sample_y - y1;
 
-                                        res1 = *(evolution[level].Lx.ptr<float>(y1)+x1);
-                                        res2 = *(evolution[level].Lx.ptr<float>(y1)+x2);
-                                        res3 = *(evolution[level].Lx.ptr<float>(y2)+x1);
-                                        res4 = *(evolution[level].Lx.ptr<float>(y2)+x2);
+                    res1 = evolution[level].Lx.at<float>(y1, x1);
+                    res2 = evolution[level].Lx.at<float>(y1, x2);
+                    res3 = evolution[level].Lx.at<float>(y2, x1);
+                    res4 = evolution[level].Lx.at<float>(y2, x2);
                     rx = (1.0f - fx)*(1.0f - fy)*res1 + fx*(1.0f - fy)*res2 + (1.0f - fx)*fy*res3 + fx*fy*res4;
 
-                                        res1 = *(evolution[level].Ly.ptr<float>(y1)+x1);
-                                        res2 = *(evolution[level].Ly.ptr<float>(y1)+x2);
-                                        res3 = *(evolution[level].Ly.ptr<float>(y2)+x1);
-                                        res4 = *(evolution[level].Ly.ptr<float>(y2)+x2);
+                    res1 = evolution[level].Ly.at<float>(y1, x1);
+                    res2 = evolution[level].Ly.at<float>(y1, x2);
+                    res3 = evolution[level].Ly.at<float>(y2, x1);
+                    res4 = evolution[level].Ly.at<float>(y2, x2);
                     ry = (1.0f - fx)*(1.0f - fy)*res1 + fx*(1.0f - fy)*res2 + (1.0f - fx)*fy*res3 + fx*fy*res4;
 
                     // Get the x and y derivatives on the rotated axis
@@ -1193,7 +1193,7 @@ void KAZE_Descriptor_Invoker::Get_KAZE_Descriptor_128(const KeyPoint &kpt, float
 
             // Store the current length^2 of the vector
             len += (dxp*dxp + dxn*dxn + mdxp*mdxp + mdxn*mdxn +
-                dyp*dyp + dyn*dyn + mdyp*mdyp + mdyn*mdyn)*gauss_s2*gauss_s2;
+            dyp*dyp + dyn*dyn + mdyp*mdyp + mdyn*mdyn)*gauss_s2*gauss_s2;
 
             j += 9;
         }
