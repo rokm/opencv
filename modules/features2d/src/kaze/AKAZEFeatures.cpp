@@ -298,9 +298,8 @@ void AKAZEFeatures::Find_Scale_Space_Extrema(std::vector<KeyPoint>& kpts)
           is_extremum = true;
           point.response = fabs(value);
           point.size = evolution_[i].esigma*options_.derivative_factor;
-          point.octave = (int)evolution_[i].octave;
-          point.class_id = (int)i;
-          ratio = (float)fastpow(2, point.octave);
+          point.octave = i;
+          ratio = (float)fastpow(2, evolution_[i].octave);
           sigma_size_ = fRound(point.size / ratio);
           point.pt.x = static_cast<float>(jx);
           point.pt.y = static_cast<float>(ix);
@@ -308,8 +307,8 @@ void AKAZEFeatures::Find_Scale_Space_Extrema(std::vector<KeyPoint>& kpts)
           // Compare response with the same and lower scale
           for (size_t ik = 0; ik < kpts_aux.size(); ik++) {
 
-            if ((point.class_id - 1) == kpts_aux[ik].class_id ||
-                point.class_id == kpts_aux[ik].class_id) {
+            if ((point.octave - 1) == kpts_aux[ik].octave ||
+                point.octave == kpts_aux[ik].octave) {
               float distx = point.pt.x*ratio - kpts_aux[ik].pt.x;
               float disty = point.pt.y*ratio - kpts_aux[ik].pt.y;
               dist = distx * distx + disty * disty;
@@ -369,7 +368,7 @@ void AKAZEFeatures::Find_Scale_Space_Extrema(std::vector<KeyPoint>& kpts)
     for (size_t j = i + 1; j < kpts_aux.size(); j++) {
 
       // Compare response with the upper scale
-      if ((pt.class_id + 1) == kpts_aux[j].class_id) {
+      if ((pt.octave + 1) == kpts_aux[j].octave) {
         float distx = pt.pt.x - kpts_aux[j].pt.x;
         float disty = pt.pt.y - kpts_aux[j].pt.y;
         dist = distx * distx + disty * disty;
@@ -396,35 +395,36 @@ void AKAZEFeatures::Do_Subpixel_Refinement(std::vector<KeyPoint>& kpts)
 {
   float Dx = 0.0, Dy = 0.0, ratio = 0.0;
   float Dxx = 0.0, Dyy = 0.0, Dxy = 0.0;
-  int x = 0, y = 0;
+  int x = 0, y = 0, level = 0;
   Matx22f A(0, 0, 0, 0);
   Vec2f b(0, 0);
   Vec2f dst(0, 0);
 
   for (size_t i = 0; i < kpts.size(); i++) {
-    ratio = (float)fastpow(2, kpts[i].octave);
+    level = kpts[i].octave;
+    ratio = (float)fastpow(2, evolution_[level].octave);
     x = fRound(kpts[i].pt.x / ratio);
     y = fRound(kpts[i].pt.y / ratio);
 
     // Compute the gradient
-    Dx = 0.5f * (evolution_[kpts[i].class_id].Ldet.at<float>(y, x + 1)
-        - evolution_[kpts[i].class_id].Ldet.at<float>(y, x - 1));
-    Dy = 0.5f * (evolution_[kpts[i].class_id].Ldet.at<float>(y + 1, x)
-        - evolution_[kpts[i].class_id].Ldet.at<float>(y - 1, x));
+    Dx = 0.5f * (evolution_[level].Ldet.at<float>(y, x + 1)
+        - evolution_[level].Ldet.at<float>(y, x - 1));
+    Dy = 0.5f * (evolution_[level].Ldet.at<float>(y + 1, x)
+        - evolution_[level].Ldet.at<float>(y - 1, x));
 
     // Compute the Hessian
-    Dxx = evolution_[kpts[i].class_id].Ldet.at<float>(y, x + 1)
-        + evolution_[kpts[i].class_id].Ldet.at<float>(y, x - 1)
-        - 2.0f * evolution_[kpts[i].class_id].Ldet.at<float>(y, x);
+    Dxx = evolution_[level].Ldet.at<float>(y, x + 1)
+        + evolution_[level].Ldet.at<float>(y, x - 1)
+        - 2.0f * evolution_[level].Ldet.at<float>(y, x);
 
-    Dyy = evolution_[kpts[i].class_id].Ldet.at<float>(y + 1, x)
-        + evolution_[kpts[i].class_id].Ldet.at<float>(y - 1, x)
-        - 2.0f * evolution_[kpts[i].class_id].Ldet.at<float>(y, x);
+    Dyy = evolution_[level].Ldet.at<float>(y + 1, x)
+        + evolution_[level].Ldet.at<float>(y - 1, x)
+        - 2.0f * evolution_[level].Ldet.at<float>(y, x);
 
-    Dxy = 0.25f * (evolution_[kpts[i].class_id].Ldet.at<float>(y + 1, x + 1)
-        + evolution_[kpts[i].class_id].Ldet.at<float>(y - 1, x - 1))
-        - 0.25f * (evolution_[kpts[i].class_id].Ldet.at<float>(y - 1, x + 1)
-        + evolution_[kpts[i].class_id].Ldet.at<float>(y + 1, x - 1));
+    Dxy = 0.25f * (evolution_[level].Ldet.at<float>(y + 1, x + 1)
+        + evolution_[level].Ldet.at<float>(y - 1, x - 1))
+        - 0.25f * (evolution_[level].Ldet.at<float>(y - 1, x + 1)
+        + evolution_[level].Ldet.at<float>(y + 1, x - 1));
 
     // Solve the linear system
     A(0, 0) = Dxx;
@@ -438,7 +438,7 @@ void AKAZEFeatures::Do_Subpixel_Refinement(std::vector<KeyPoint>& kpts)
     if (fabs(dst(0)) <= 1.0f && fabs(dst(1)) <= 1.0f) {
       kpts[i].pt.x = x + dst(0);
       kpts[i].pt.y = y + dst(1);
-      int power = fastpow(2, evolution_[kpts[i].class_id].octave);
+      int power = fastpow(2, evolution_[level].octave);
       kpts[i].pt.x = (float)(kpts[i].pt.x*power + .5*(power-1));
       kpts[i].pt.y = (float)(kpts[i].pt.y*power + .5*(power-1));
       kpts[i].angle = 0.0;
@@ -709,7 +709,7 @@ void AKAZEFeatures::Compute_Descriptors(std::vector<KeyPoint>& kpts, Mat& desc)
 {
   for(size_t i = 0; i < kpts.size(); i++)
   {
-      CV_Assert(0 <= kpts[i].class_id && kpts[i].class_id < static_cast<int>(evolution_.size()));
+      CV_Assert(0 <= kpts[i].octave && kpts[i].octave < static_cast<int>(evolution_.size()));
   }
 
   // Allocate memory for the matrix with the descriptors
@@ -791,7 +791,7 @@ void AKAZEFeatures::Compute_Main_Orientation(KeyPoint& kpt, const std::vector<TE
   float sumX = 0.0, sumY = 0.0, max = 0.0, ang1 = 0.0, ang2 = 0.0;
 
   // Get the information from the keypoint
-  level = kpt.class_id;
+  level = kpt.octave;
   ratio = (float)(1 << evolution_[level].octave);
   s = fRound(0.5f*kpt.size / ratio);
   xf = kpt.pt.x / ratio;
@@ -886,9 +886,9 @@ void MSURF_Upright_Descriptor_64_Invoker::Get_MSURF_Upright_Descriptor_64(const 
   pattern_size = 12;
 
   // Get the information from the keypoint
-  ratio = (float)(1 << kpt.octave);
+  level = kpt.octave;
+  ratio = (float)(1 << evolution[level].octave);
   scale = fRound(0.5f*kpt.size / ratio);
-  level = kpt.class_id;
   yf = kpt.pt.y / ratio;
   xf = kpt.pt.x / ratio;
 
@@ -1009,10 +1009,10 @@ void MSURF_Descriptor_64_Invoker::Get_MSURF_Descriptor_64(const KeyPoint& kpt, f
   pattern_size = 12;
 
   // Get the information from the keypoint
-  ratio = (float)(1 << kpt.octave);
+  level = kpt.octave;
+  ratio = (float)(1 << evolution[level].octave);
   scale = fRound(0.5f*kpt.size / ratio);
   angle = (kpt.angle * static_cast<float>(CV_PI)) / 180.f;
-  level = kpt.class_id;
   yf = kpt.pt.y / ratio;
   xf = kpt.pt.x / ratio;
   co = cos(angle);
@@ -1130,9 +1130,9 @@ void Upright_MLDB_Full_Descriptor_Invoker::Get_Upright_MLDB_Full_Descriptor(cons
   Mat values_3 = Mat::zeros(16, options.descriptor_channels, CV_32FC1);
 
   // Get the information from the keypoint
-  ratio = (float)(1 << kpt.octave);
+  level = kpt.octave;
+  ratio = (float)(1 << evolution[level].octave);
   scale = fRound(0.5f*kpt.size / ratio);
-  level = kpt.class_id;
   yf = kpt.pt.y / ratio;
   xf = kpt.pt.x / ratio;
 
@@ -1413,7 +1413,10 @@ void MLDB_Full_Descriptor_Invoker::Get_MLDB_Full_Descriptor(const KeyPoint& kpt,
   float values[16*max_channels];
   const double size_mult[3] = {1, 2.0/3.0, 1.0/2.0};
 
-  float ratio = (float)(1 << kpt.octave);
+  const std::vector<TEvolution>& evolution = *evolution_;
+
+  int level = kpt.octave;
+  float ratio = (float)(1 << evolution[level].octave);
   float scale = (float)fRound(0.5f*kpt.size / ratio);
   float xf = kpt.pt.x / ratio;
   float yf = kpt.pt.y / ratio;
@@ -1427,7 +1430,7 @@ void MLDB_Full_Descriptor_Invoker::Get_MLDB_Full_Descriptor(const KeyPoint& kpt,
 
       int val_count = (lvl + 2) * (lvl + 2);
       int sample_step = static_cast<int>(ceil(pattern_size * size_mult[lvl]));
-      MLDB_Fill_Values(values, sample_step, kpt.class_id, xf, yf, co, si, scale);
+      MLDB_Fill_Values(values, sample_step, level, xf, yf, co, si, scale);
       MLDB_Binary_Comparisons(values, desc, val_count, dpos);
   }
 }
@@ -1451,10 +1454,10 @@ void MLDB_Descriptor_Subset_Invoker::Get_MLDB_Descriptor_Subset(const KeyPoint& 
   const std::vector<TEvolution>& evolution = *evolution_;
 
   // Get the information from the keypoint
-  float ratio = (float)(1 << kpt.octave);
+  int level = kpt.octave;
+  float ratio = (float)(1 << evolution[level].octave);
   int scale = fRound(0.5f*kpt.size / ratio);
   float angle = (kpt.angle * static_cast<float>(CV_PI)) / 180.f;
-  int level = kpt.class_id;
   float yf = kpt.pt.y / ratio;
   float xf = kpt.pt.x / ratio;
   float co = cos(angle);
@@ -1545,9 +1548,9 @@ void Upright_MLDB_Descriptor_Subset_Invoker::Get_Upright_MLDB_Descriptor_Subset(
   const std::vector<TEvolution>& evolution = *evolution_;
 
   // Get the information from the keypoint
-  float ratio = (float)(1 << kpt.octave);
+  int level = kpt.octave;
+  float ratio = (float)(1 << evolution[level].octave);
   int scale = fRound(0.5f*kpt.size / ratio);
-  int level = kpt.class_id;
   float yf = kpt.pt.y / ratio;
   float xf = kpt.pt.x / ratio;
 
