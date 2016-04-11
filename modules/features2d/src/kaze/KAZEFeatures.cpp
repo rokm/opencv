@@ -469,7 +469,12 @@ void KAZEFeatures::Do_Subpixel_Refinement(std::vector<KeyPoint> &kpts) {
 
             // In OpenCV the size of a keypoint is the diameter!!
             kpts_[i].size = 2.0f*options_.soffset*pow(2.0f, dsc);
-            kpts_[i].angle = 0.0;
+
+            // Compute angle
+            if (options_.upright)
+                kpts_[i].angle = 0.0;
+            else
+                Compute_Main_Orientation(kpts_[i], evolution_, options_);
         }
         // Set the points to be deleted after the for loop
         else {
@@ -511,7 +516,6 @@ public:
 
         for (int i = range.start; i < range.end; i++)
         {
-            kpts[i].angle = 0.0;
             if (options_.upright)
             {
                 kpts[i].angle = 0.0;
