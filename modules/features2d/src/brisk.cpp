@@ -617,7 +617,7 @@ void
 BRISK_Impl::detectAndCompute( InputArray _image, InputArray _mask, std::vector<KeyPoint>& keypoints,
                               OutputArray _descriptors, bool useProvidedKeypoints)
 {
-  bool doOrientation=true;
+  bool doOrientation=false;
 
   // If the user specified cv::noArray(), this will yield false. Otherwise it will return true.
   bool doDescriptors = _descriptors.needed();
